@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body { font-family: 'Inter', -apple-system, sans-serif; }
+.font-serif { font-family: 'Instrument Serif', serif; }
+
+@layer base {
+  :root {
+    --background: 240 10% 3.5%;
+    --foreground: 0 0% 98%;
+    --card: 240 8% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 5%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 265 89% 66%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 5% 12%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 265 89% 66%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 15%;
+    --input: 240 6% 15%;
+    --ring: 265 89% 66%;
+    --radius: 0.9rem;
+    --sidebar-background: 240 10% 4.5%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 265 89% 66%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 10%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 6% 12%;
+    --sidebar-ring: 265 89% 66%;
+  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(240 6% 18%); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(240 6% 25%); }
+
+/* Glass panel */
+.glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.glow-primary {
+  box-shadow: 0 0 60px -10px hsl(265 89% 66% / 0.5), 0 0 120px -30px hsl(265 89% 66% / 0.3);
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.aurora {
+  background:
+    radial-gradient(60% 60% at 20% 20%, hsl(265 89% 66% / 0.25), transparent 60%),
+    radial-gradient(50% 50% at 80% 30%, hsl(200 89% 60% / 0.18), transparent 60%),
+    radial-gradient(50% 50% at 60% 80%, hsl(320 89% 60% / 0.18), transparent 60%);
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, hsl(240 6% 10%) 0%, hsl(240 6% 15%) 50%, hsl(240 6% 10%) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
