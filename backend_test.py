@@ -13,14 +13,14 @@ import os
 import sys
 
 # Configuration
-BASE_URL = "https://8ebfb8fb-0dd2-42f2-8818-5bf5bb63f46d.preview.emergentagent.com/api"
+BASE_URL = "https://style-forge-136.preview.emergentagent.com/api"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "ai_fashion_studio"
 
-# Test data
-TEST_USER_ID = str(uuid.uuid4())
-TEST_SESSION_TOKEN = str(uuid.uuid4())
-TEST_EMAIL = f"test_{uuid.uuid4().hex[:8]}@example.com"
+# Test data - using fixed values for regression test
+TEST_USER_ID = "regression-user"
+TEST_SESSION_TOKEN = "regression-token-123"
+TEST_EMAIL = "regression@lumen.ai"
 
 def setup_test_user():
     """Insert a test user and session directly into MongoDB"""
@@ -28,23 +28,28 @@ def setup_test_user():
         client = MongoClient(MONGO_URL)
         db = client[DB_NAME]
         
+        # Clean up any existing test data first
+        db.users.delete_many({"id": TEST_USER_ID})
+        db.sessions.delete_many({"token": TEST_SESSION_TOKEN})
+        db.generations.delete_many({"user_id": TEST_USER_ID})
+        
         # Create test user
         user = {
             "id": TEST_USER_ID,
             "email": TEST_EMAIL,
-            "name": "Test User",
-            "picture": "https://example.com/avatar.jpg",
+            "name": "Regression Bot",
+            "picture": "",
             "credits": 100,
             "created_at": datetime.utcnow()
         }
         db.users.insert_one(user)
         print(f"✓ Created test user: {TEST_EMAIL}")
         
-        # Create test session
+        # Create test session (30 days future)
         session = {
             "token": TEST_SESSION_TOKEN,
             "user_id": TEST_USER_ID,
-            "expires_at": datetime.utcnow() + timedelta(days=7),
+            "expires_at": datetime.utcnow() + timedelta(days=30),
             "created_at": datetime.utcnow()
         }
         db.sessions.insert_one(session)
@@ -301,9 +306,11 @@ def test_generations_list():
         return False
 
 def test_generate_image():
-    """Test POST /api/generate with authentication"""
+    """Test POST /api/generate with authentication - CRITICAL TEST for lazy client init"""
     print("\n=== Testing POST /api/generate (with auth) ===")
-    print("Note: This may take up to 30 seconds...")
+    print("Note: This may take up to 90 seconds...")
+    print("CRITICAL: This validates that the lazy client init works end-to-end")
+    print("          and the 'OPENAI_API_KEY missing' error is gone.")
     try:
         cookies = {"session_token": TEST_SESSION_TOKEN}
         payload = {
@@ -313,7 +320,7 @@ def test_generate_image():
             f"{BASE_URL}/generate",
             json=payload,
             cookies=cookies,
-            timeout=60
+            timeout=90  # 90s timeout as specified
         )
         print(f"Status: {response.status_code}")
         
@@ -329,6 +336,7 @@ def test_generate_image():
                     print(f"  - Generated ID: {data['id']}")
                     print(f"  - Image data length: {len(image_data)} chars")
                     print(f"  - Prompt: {data['prompt']}")
+                    print(f"  ✓ CRITICAL: Lazy client initialization working - no OPENAI_API_KEY error!")
                     return data["id"]  # Return the ID for deletion test
                 else:
                     print(f"✗ Image data doesn't start with 'data:image/': {image_data[:50]}")
@@ -397,7 +405,8 @@ def verify_generation_deleted(generation_id):
 
 def main():
     print("=" * 60)
-    print("LUMEN AI FASHION STUDIO - BACKEND API TEST SUITE")
+    print("PHASE 2.1 REGRESSION TEST - BACKEND API TEST SUITE")
+    print("Testing lazy client initialization fix in gemini.js")
     print("=" * 60)
     
     results = {}
@@ -409,31 +418,50 @@ def main():
         sys.exit(1)
     
     try:
-        # Test unauthenticated endpoints
-        results["health"] = test_health_endpoint()
-        results["auth_me_no_cookie"] = test_auth_me_no_cookie()
-        results["auth_session_invalid"] = test_auth_session_invalid()
-        results["auth_logout"] = test_auth_logout()
-        results["stats_no_auth"] = test_stats_no_auth()
-        results["generations_no_auth"] = test_generations_no_auth()
-        results["generate_no_auth"] = test_generate_no_auth()
+        # Test unauthenticated endpoints (Tests 1-7)
+        print("\n" + "=" * 60)
+        print("TESTS 1-7: UNAUTHENTICATED ENDPOINTS")
+        print("=" * 60)
+        results["1_health"] = test_health_endpoint()
+        results["2_auth_me_no_cookie"] = test_auth_me_no_cookie()
+        results["3_auth_session_invalid"] = test_auth_session_invalid()
+        results["4_auth_logout"] = test_auth_logout()
+        results["5_stats_no_auth"] = test_stats_no_auth()
+        results["6_generations_no_auth"] = test_generations_no_auth()
+        results["7_generate_no_auth"] = test_generate_no_auth()
         
-        # Test authenticated endpoints
-        results["auth_me_with_cookie"] = test_auth_me_with_cookie()
-        results["stats_with_auth"] = test_stats_with_auth()
-        results["generations_list"] = test_generations_list()
+        # Test authenticated endpoints (Tests 8-12)
+        print("\n" + "=" * 60)
+        print("TESTS 8-12: AUTHENTICATED ENDPOINTS")
+        print("=" * 60)
+        results["8_auth_me_with_cookie"] = test_auth_me_with_cookie()
+        results["9_stats_with_auth"] = test_stats_with_auth()
         
-        # Test image generation (this is the critical one)
+        # Test 10: Generate image - CRITICAL TEST for lazy client init
+        print("\n" + "=" * 60)
+        print("TEST 10: AI IMAGE GENERATION (CRITICAL)")
+        print("=" * 60)
         generation_id = test_generate_image()
         if generation_id and isinstance(generation_id, str):
-            results["generate_image"] = True
-            # Test deletion
-            results["delete_generation"] = test_delete_generation(generation_id)
-            results["verify_deletion"] = verify_generation_deleted(generation_id)
+            results["10_generate_image"] = True
+            
+            # Test 11: Verify generation appears in list
+            print("\n" + "=" * 60)
+            print("TEST 11: VERIFY GENERATION IN LIST")
+            print("=" * 60)
+            results["11_generations_list"] = test_generations_list()
+            
+            # Test 12: Delete generation
+            print("\n" + "=" * 60)
+            print("TEST 12: DELETE GENERATION")
+            print("=" * 60)
+            results["12a_delete_generation"] = test_delete_generation(generation_id)
+            results["12b_verify_deletion"] = verify_generation_deleted(generation_id)
         else:
-            results["generate_image"] = False
-            results["delete_generation"] = False
-            results["verify_deletion"] = False
+            results["10_generate_image"] = False
+            results["11_generations_list"] = False
+            results["12a_delete_generation"] = False
+            results["12b_verify_deletion"] = False
         
     finally:
         # Cleanup
@@ -442,17 +470,28 @@ def main():
     
     # Print summary
     print("\n" + "=" * 60)
-    print("TEST SUMMARY")
+    print("PHASE 2.1 REGRESSION TEST SUMMARY")
     print("=" * 60)
     
     passed = sum(1 for v in results.values() if v is True)
     total = len(results)
     
+    print("\nPASS/FAIL MATRIX:")
+    print("-" * 60)
     for test_name, result in results.items():
         status = "✓ PASS" if result else "✗ FAIL"
         print(f"{status}: {test_name}")
     
-    print(f"\nTotal: {passed}/{total} tests passed")
+    print("\n" + "=" * 60)
+    print(f"TOTAL: {passed}/{total} tests passed")
+    
+    if passed == total:
+        print("✓ ALL TESTS PASSED - Phase 2.1 bug fixes verified!")
+        print("✓ Lazy client initialization working correctly")
+        print("✓ No 'OPENAI_API_KEY missing' error")
+    else:
+        print(f"✗ {total - passed} test(s) failed")
+    
     print("=" * 60)
     
     return 0 if passed == total else 1
