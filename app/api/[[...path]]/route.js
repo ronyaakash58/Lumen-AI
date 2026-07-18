@@ -39,11 +39,11 @@ function clearSessionCookie(res) {
   return res
 }
 
-async function handleRoute(request, ctx) {
-  const params = await ctx.params
-  const path = params?.path || []
-  const route = '/' + path.join('/')
-  const method = request.method
+async function handleRoute(request, ctx = {}) {
+  const params = ctx?.params || {}
+  const path = Array.isArray(params.path) ? params.path : []
+  const route = '/' + path.filter(Boolean).join('/')
+  const method = request?.method || 'GET'
 
   try {
     const db = await getDb()
